@@ -230,3 +230,186 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     </label>
   );
 }
+
+// ====================== Bulk import ======================
+
+type ParsedQ = { question_text: string; options: string[]; correct_index: number };
+
+const SAMPLE_SCRIPT = `Q: What is the SI unit of force?
+A) Joule
+B) Newton *
+C) Pascal
+D) Watt
+
+Q: Which organelle is the powerhouse of the cell?
+A) Nucleus
+B) Ribosome
+C) Mitochondria *
+D) Golgi apparatus`;
+
+/**
+ * Parses two formats:
+ * 1) JSON array: [{ "q": "...", "options": ["A","B","C","D"], "answer": 1 }, ...]
+ *    - "answer" can be index (0-3) OR letter ("A"-"D")
+ * 2) Script format:
+ *      Q: question text
+ *      A) option one
+ *      B) option two *      <-- the * marks the correct answer
+ *      C) option three
+ *      D) option four
+ *    Blank line separates questions. Letters A-Z supported.
+ */
+function parseScript(input: string): { ok: true; questions: ParsedQ[] } | { ok: false; error: string } {
+  const text = input.trim();
+  if (!text) return { ok: false, error: "Paste some questions first." };
+
+  // Try JSON
+  if (text.startsWith("[") || text.startsWith("{")) {
+    try {
+      const raw = JSON.parse(text);
+      const arr = Array.isArray(raw) ? raw : [raw];
+      const questions: ParsedQ[] = arr.map((item: any, i: number) => {
+        const q = String(item.q ?? item.question ?? item.question_text ?? "").trim();
+        const options: string[] = (item.options ?? item.choices ?? []).map((o: any) => String(o));
+        let ans = item.answer ?? item.correct ?? item.correct_index ?? 0;
+        if (typeof ans === "string" && ans.length === 1) ans = ans.toUpperCase().charCodeAt(0) - 65;
+        const correct_index = Number(ans);
+        if (!q) throw new Error(`Question ${i + 1} missing text`);
+        if (options.length < 2) throw new Error(`Question ${i + 1} needs at least 2 options`);
+        if (!Number.isInteger(correct_index) || correct_index < 0 || correct_index >= options.length) {
+          throw new Error(`Question ${i + 1} has invalid answer index`);
+        }
+        return { question_text: q, options, correct_index };
+      });
+      return { ok: true, questions };
+    } catch (e: any) {
+      return { ok: false, error: `JSON parse error: ${e.message}` };
+    }
+  }
+
+  // Script format
+  const blocks = text.split(/\n\s*\n+/).map(b => b.trim()).filter(Boolean);
+  const questions: ParsedQ[] = [];
+  for (let bi = 0; bi < blocks.length; bi++) {
+    const block = blocks[bi];
+    const lines = block.split("\n").map(l => l.trim()).filter(Boolean);
+    if (!lines.length) continue;
+    let qLine = lines[0];
+    const qMatch = qLine.match(/^(?:Q[:.)]?\s*|\d+[.)]\s*)(.*)$/i);
+    qLine = qMatch ? qMatch[1].trim() : qLine;
+    const options: string[] = [];
+    let correct_index = -1;
+    for (let i = 1; i < lines.length; i++) {
+      const m = lines[i].match(/^([A-Z])[).:\-]\s*(.+)$/i);
+      if (!m) return { ok: false, error: `Question ${bi + 1}: cannot parse line "${lines[i]}"` };
+      let optText = m[2].trim();
+      if (/\s\*\s*$|\*$/.test(optText)) {
+        correct_index = options.length;
+        optText = optText.replace(/\s*\*\s*$/, "").trim();
+      }
+      options.push(optText);
+    }
+    if (!qLine) return { ok: false, error: `Question ${bi + 1}: missing question text` };
+    if (options.length < 2) return { ok: false, error: `Question ${bi + 1}: needs at least 2 options` };
+    if (correct_index < 0) return { ok: false, error: `Question ${bi + 1}: mark the correct answer with " *" at the end of an option` };
+    questions.push({ question_text: qLine, options, correct_index });
+  }
+  if (!questions.length) return { ok: false, error: "No questions detected." };
+  return { ok: true, questions };
+}
+
+function BulkImport({ onImport, hasExisting }: { onImport: (qs: ParsedQ[], replace: boolean) => void; hasExisting: boolean }) {
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState("");
+  const [replace, setReplace] = useState(false);
+
+  const result = text.trim() ? parseScript(text) : null;
+  const count = result?.ok ? result.questions.length : 0;
+  const error = result && !result.ok ? result.error : null;
+
+  return (
+    <div className="mt-8 rounded-lg border border-border bg-card shadow-[var(--shadow-card)] overflow-hidden">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center gap-3 px-5 py-4 hover:bg-muted/50 transition"
+      >
+        <div className="flex h-9 w-9 items-center justify-center rounded-md bg-accent/15 text-accent">
+          <Code2 className="h-4 w-4" />
+        </div>
+        <div className="flex-1 text-left">
+          <div className="font-medium flex items-center gap-2">
+            Bulk import questions <Sparkles className="h-3.5 w-3.5 text-accent" />
+          </div>
+          <div className="text-xs text-muted-foreground">Paste a question paper script and we'll auto-create the questions.</div>
+        </div>
+        <span className="text-xs text-muted-foreground">{open ? "Hide" : "Open"}</span>
+      </button>
+
+      {open && (
+        <div className="border-t border-border p-5 space-y-4">
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <div className="text-xs font-medium text-muted-foreground mb-1">Your script</div>
+              <textarea
+                value={text}
+                onChange={e => setText(e.target.value)}
+                rows={14}
+                spellCheck={false}
+                placeholder={SAMPLE_SCRIPT}
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+            </div>
+            <div>
+              <div className="text-xs font-medium text-muted-foreground mb-1">Format guide</div>
+              <pre className="rounded-md border border-border bg-muted/40 p-3 text-xs font-mono whitespace-pre-wrap leading-relaxed">{`Q: question text
+A) option one
+B) option two *      ← star marks correct
+C) option three
+D) option four
+
+(blank line between questions)
+
+Also supports JSON:
+[{ "q":"2+2?", "options":["3","4","5"], "answer":"B" }]`}</pre>
+              <button
+                type="button"
+                onClick={() => setText(SAMPLE_SCRIPT)}
+                className="mt-2 text-xs text-primary hover:underline"
+              >
+                Load sample
+              </button>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            {error && <span className="text-sm text-destructive">{error}</span>}
+            {!error && count > 0 && (
+              <span className="text-sm text-success-foreground bg-success/15 px-2 py-0.5 rounded">
+                {count} question{count === 1 ? "" : "s"} ready
+              </span>
+            )}
+            {hasExisting && (
+              <label className="ml-auto inline-flex items-center gap-2 text-sm text-muted-foreground">
+                <input type="checkbox" checked={replace} onChange={e => setReplace(e.target.checked)} />
+                Replace existing questions
+              </label>
+            )}
+            <button
+              disabled={!result?.ok}
+              onClick={() => {
+                if (!result?.ok) return;
+                if (replace && hasExisting && !confirm("Delete all existing questions and import these?")) return;
+                onImport(result.questions, replace);
+                setText("");
+                setOpen(false);
+              }}
+              className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-40"
+            >
+              Import {count > 0 ? `(${count})` : ""}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
