@@ -2,7 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { ChevronLeft, Plus, Trash2, Save, Code2, Sparkles } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
+import { ChevronLeft, Plus, Trash2, Save, Code2, Sparkles, Lock } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/admin/exam/$examId")({
@@ -20,10 +21,12 @@ type Question = {
 
 function EditExam() {
   const { examId } = Route.useParams();
+  const { isAdmin, isLoading: authLoading } = useAuth();
   const qc = useQueryClient();
 
   const { data, isLoading } = useQuery({
     queryKey: ["admin-exam", examId],
+    enabled: isAdmin,
     queryFn: async () => {
       const [examRes, qRes] = await Promise.all([
         supabase.from("exams").select("*").eq("id", examId).single(),
@@ -109,6 +112,19 @@ function EditExam() {
     qc.invalidateQueries({ queryKey: ["admin-exam", examId] });
   }
 
+  if (authLoading) return <div className="mx-auto max-w-4xl px-6 py-12"><div className="h-96 rounded bg-muted animate-pulse" /></div>;
+  if (!isAdmin) {
+    return (
+      <div className="mx-auto max-w-md px-6 py-24 text-center">
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+          <Lock className="h-5 w-5" />
+        </div>
+        <h1 className="mt-4 font-display text-2xl">Admin only</h1>
+        <p className="mt-2 text-sm text-muted-foreground">You need admin permissions to edit exams.</p>
+        <Link to="/" className="mt-6 inline-flex rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">Back to exams</Link>
+      </div>
+    );
+  }
   if (isLoading) return <div className="mx-auto max-w-4xl px-6 py-12"><div className="h-96 rounded bg-muted animate-pulse" /></div>;
   if (!data?.exam) return <div className="mx-auto max-w-4xl px-6 py-12">Not found.</div>;
 

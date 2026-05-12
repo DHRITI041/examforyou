@@ -8,6 +8,9 @@ import {
   Scripts,
 } from "@tanstack/react-router";
 import { Toaster } from "@/components/ui/sonner";
+import { AuthProvider, useAuth } from "@/hooks/use-auth";
+import { AuthGate } from "@/components/auth-gate";
+import { LogOut } from "lucide-react";
 
 import appCss from "../styles.css?url";
 
@@ -86,6 +89,7 @@ function RootShell({ children }: { children: React.ReactNode }) {
 }
 
 function Header() {
+  const { user, profile, isAdmin, signOut } = useAuth();
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
@@ -95,8 +99,24 @@ function Header() {
         </Link>
         <nav className="flex items-center gap-1 text-sm">
           <Link to="/" activeOptions={{ exact: true }} className="rounded-md px-3 py-2 hover:bg-muted [&.active]:font-semibold" activeProps={{ className: "active" }}>Exams</Link>
-          <Link to="/admin" className="rounded-md px-3 py-2 hover:bg-muted [&.active]:font-semibold" activeProps={{ className: "active" }}>Admin</Link>
+          {isAdmin && (
+            <Link to="/admin" className="rounded-md px-3 py-2 hover:bg-muted [&.active]:font-semibold" activeProps={{ className: "active" }}>Admin</Link>
+          )}
           <Link to="/about" className="rounded-md px-3 py-2 hover:bg-muted [&.active]:font-semibold" activeProps={{ className: "active" }}>About</Link>
+          {user && (
+            <div className="ml-3 flex items-center gap-2 border-l border-border pl-3">
+              {profile?.avatar_url ? (
+                <img src={profile.avatar_url} alt="" className="h-7 w-7 rounded-full" />
+              ) : (
+                <div className="h-7 w-7 rounded-full bg-secondary text-xs flex items-center justify-center font-semibold">
+                  {(profile?.display_name ?? user.email ?? "?").slice(0, 1).toUpperCase()}
+                </div>
+              )}
+              <button onClick={() => signOut()} title="Sign out" className="rounded-md p-2 hover:bg-muted">
+                <LogOut className="h-4 w-4" />
+              </button>
+            </div>
+          )}
         </nav>
       </div>
     </header>
@@ -107,14 +127,18 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   return (
     <QueryClientProvider client={queryClient}>
-      <div className="min-h-screen flex flex-col">
-        <Header />
-        <main className="flex-1"><Outlet /></main>
-        <footer className="border-t border-border py-8 text-center text-sm text-muted-foreground">
-          Free & open. Built for JEE, NEET and the curious.
-        </footer>
-      </div>
-      <Toaster />
+      <AuthProvider>
+        <AuthGate>
+          <div className="min-h-screen flex flex-col">
+            <Header />
+            <main className="flex-1"><Outlet /></main>
+            <footer className="border-t border-border py-8 text-center text-sm text-muted-foreground">
+              Free & open. Built for JEE, NEET and the curious.
+            </footer>
+          </div>
+        </AuthGate>
+        <Toaster />
+      </AuthProvider>
     </QueryClientProvider>
   );
 }

@@ -2,7 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Pencil, Trash2, BookOpen, AlertTriangle } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
+import { Plus, Pencil, Trash2, BookOpen, Lock } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/admin/")({
@@ -15,9 +16,11 @@ type Exam = {
 };
 
 function Admin() {
+  const { isAdmin, isLoading: authLoading } = useAuth();
   const qc = useQueryClient();
   const { data: exams, isLoading } = useQuery({
     queryKey: ["admin-exams"],
+    enabled: isAdmin,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("exams")
@@ -54,13 +57,22 @@ function Admin() {
     qc.invalidateQueries({ queryKey: ["exams"] });
   }
 
+  if (authLoading) return <div className="mx-auto max-w-5xl px-6 py-12"><div className="h-40 rounded-lg bg-muted animate-pulse" /></div>;
+  if (!isAdmin) {
+    return (
+      <div className="mx-auto max-w-md px-6 py-24 text-center">
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+          <Lock className="h-5 w-5" />
+        </div>
+        <h1 className="mt-4 font-display text-2xl">Admin only</h1>
+        <p className="mt-2 text-sm text-muted-foreground">You need admin permissions to access this page. Ask the platform owner to grant you the admin role.</p>
+        <Link to="/" className="mt-6 inline-flex rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">Back to exams</Link>
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto max-w-5xl px-6 py-12">
-      <div className="rounded-lg border border-accent/40 bg-accent/10 p-3 text-sm flex gap-2 items-start mb-8">
-        <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
-        <div>This admin panel is open to anyone (per your "no login" choice). Anyone can add or edit exams. Ask later to add login if you want to restrict it.</div>
-      </div>
-
       <div className="flex items-end justify-between mb-8">
         <div>
           <div className="text-xs uppercase tracking-widest text-muted-foreground">Admin</div>
