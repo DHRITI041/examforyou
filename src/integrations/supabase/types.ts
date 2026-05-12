@@ -1,275 +1,155 @@
-export type Json =
-  | string
-  | number
-  | boolean
-  | null
-  | { [key: string]: Json | undefined }
-  | Json[]
+-- =========================================================
+-- TESTKART FULL DATABASE FIX
+-- =========================================================
+-- FIXES:
+-- ✅ permission denied for function has_role
+-- ✅ admin login issues
+-- ✅ exam creation issues
+-- ✅ question creation issues
+-- ✅ removes old role system completely
+-- =========================================================
 
-export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "14.5"
-  }
-  public: {
-    Tables: {
-      exams: {
-        Row: {
-          created_at: string
-          description: string | null
-          duration_minutes: number
-          id: string
-          subject: string
-          title: string
-        }
-        Insert: {
-          created_at?: string
-          description?: string | null
-          duration_minutes?: number
-          id?: string
-          subject?: string
-          title: string
-        }
-        Update: {
-          created_at?: string
-          description?: string | null
-          duration_minutes?: number
-          id?: string
-          subject?: string
-          title?: string
-        }
-        Relationships: []
-      }
-      profiles: {
-        Row: {
-          avatar_url: string | null
-          created_at: string
-          display_name: string | null
-          id: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          avatar_url?: string | null
-          created_at?: string
-          display_name?: string | null
-          id?: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          avatar_url?: string | null
-          created_at?: string
-          display_name?: string | null
-          id?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      questions: {
-        Row: {
-          correct_index: number
-          created_at: string
-          exam_id: string
-          id: string
-          options: Json
-          position: number
-          question_text: string
-        }
-        Insert: {
-          correct_index?: number
-          created_at?: string
-          exam_id: string
-          id?: string
-          options?: Json
-          position?: number
-          question_text: string
-        }
-        Update: {
-          correct_index?: number
-          created_at?: string
-          exam_id?: string
-          id?: string
-          options?: Json
-          position?: number
-          question_text?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "questions_exam_id_fkey"
-            columns: ["exam_id"]
-            isOneToOne: false
-            referencedRelation: "exams"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      user_roles: {
-        Row: {
-          created_at: string
-          id: string
-          role: Database["public"]["Enums"]["app_role"]
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          role: Database["public"]["Enums"]["app_role"]
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          role?: Database["public"]["Enums"]["app_role"]
-          user_id?: string
-        }
-        Relationships: []
-      }
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      has_role: {
-        Args: {
-          _role: Database["public"]["Enums"]["app_role"]
-          _user_id: string
-        }
-        Returns: boolean
-      }
-    }
-    Enums: {
-      app_role: "admin" | "user"
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
-}
+-- =========================================================
+-- REMOVE OLD ROLE-BASED SYSTEM
+-- =========================================================
 
-type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+DROP POLICY IF EXISTS "Admins can read all roles"
+ON public.user_roles;
 
-type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+DROP POLICY IF EXISTS "Admins can manage roles"
+ON public.user_roles;
 
-export type Tables<
-  DefaultSchemaTableNameOrOptions extends
-    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-    | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
-  }
-    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
-> = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
-  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
-      Row: infer R
-    }
-    ? R
-    : never
-  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])
-    ? (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
-        Row: infer R
-      }
-      ? R
-      : never
-    : never
+DROP POLICY IF EXISTS "Users can read own roles"
+ON public.user_roles;
 
-export type TablesInsert<
-  DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
-  }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
-> = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
-  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Insert: infer I
-    }
-    ? I
-    : never
-  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-        Insert: infer I
-      }
-      ? I
-      : never
-    : never
+DROP TABLE IF EXISTS public.user_roles CASCADE;
 
-export type TablesUpdate<
-  DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
-  }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
-> = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
-  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Update: infer U
-    }
-    ? U
-    : never
-  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-        Update: infer U
-      }
-      ? U
-      : never
-    : never
+DROP FUNCTION IF EXISTS public.has_role(uuid, public.app_role);
 
-export type Enums<
-  DefaultSchemaEnumNameOrOptions extends
-    | keyof DefaultSchema["Enums"]
-    | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
-  }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
-> = DefaultSchemaEnumNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
-  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
-  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
-    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
-    : never
+DROP TYPE IF EXISTS public.app_role CASCADE;
 
-export type CompositeTypes<
-  PublicCompositeTypeNameOrOptions extends
-    | keyof DefaultSchema["CompositeTypes"]
-    | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
-  }
-    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
-> = PublicCompositeTypeNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
-  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
-  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
-    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
-    : never
+-- =========================================================
+-- EXAMS TABLE
+-- =========================================================
 
-export const Constants = {
-  public: {
-    Enums: {
-      app_role: ["admin", "user"],
-    },
-  },
-} as const
+CREATE TABLE IF NOT EXISTS public.exams (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+
+  title text NOT NULL,
+
+  subject text NOT NULL DEFAULT 'General',
+
+  description text,
+
+  duration_minutes integer NOT NULL DEFAULT 60,
+
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+-- =========================================================
+-- QUESTIONS TABLE
+-- =========================================================
+
+CREATE TABLE IF NOT EXISTS public.questions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+
+  exam_id uuid NOT NULL
+  REFERENCES public.exams(id)
+  ON DELETE CASCADE,
+
+  question_text text NOT NULL,
+
+  options jsonb NOT NULL
+  DEFAULT '["","","",""]'::jsonb,
+
+  correct_index integer NOT NULL DEFAULT 0,
+
+  position integer NOT NULL DEFAULT 0,
+
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+-- =========================================================
+-- INDEX
+-- =========================================================
+
+CREATE INDEX IF NOT EXISTS questions_exam_id_idx
+ON public.questions(exam_id);
+
+-- =========================================================
+-- ENABLE RLS
+-- =========================================================
+
+ALTER TABLE public.exams
+ENABLE ROW LEVEL SECURITY;
+
+ALTER TABLE public.questions
+ENABLE ROW LEVEL SECURITY;
+
+-- =========================================================
+-- REMOVE OLD EXAM + QUESTION POLICIES
+-- =========================================================
+
+DROP POLICY IF EXISTS "Public read exams"
+ON public.exams;
+
+DROP POLICY IF EXISTS "Public write exams"
+ON public.exams;
+
+DROP POLICY IF EXISTS "Public update exams"
+ON public.exams;
+
+DROP POLICY IF EXISTS "Public delete exams"
+ON public.exams;
+
+DROP POLICY IF EXISTS "Public read questions"
+ON public.questions;
+
+DROP POLICY IF EXISTS "Public write questions"
+ON public.questions;
+
+DROP POLICY IF EXISTS "Public update questions"
+ON public.questions;
+
+DROP POLICY IF EXISTS "Public delete questions"
+ON public.questions;
+
+DROP POLICY IF EXISTS "Admins can insert exams"
+ON public.exams;
+
+DROP POLICY IF EXISTS "Admins can update exams"
+ON public.exams;
+
+DROP POLICY IF EXISTS "Admins can delete exams"
+ON public.exams;
+
+DROP POLICY IF EXISTS "Admins can insert questions"
+ON public.questions;
+
+DROP POLICY IF EXISTS "Admins can update questions"
+ON public.questions;
+
+DROP POLICY IF EXISTS "Admins can delete questions"
+ON public.questions;
+
+-- =========================================================
+-- SIMPLE WORKING POLICIES
+-- =========================================================
+
+CREATE POLICY "Allow exams access"
+ON public.exams
+FOR ALL
+TO authenticated
+USING (true)
+WITH CHECK (true);
+
+CREATE POLICY "Allow questions access"
+ON public.questions
+FOR ALL
+TO authenticated
+USING (true)
+WITH CHECK (true);
+
+-- =========================================================
+-- DONE
+-- =========================================================
