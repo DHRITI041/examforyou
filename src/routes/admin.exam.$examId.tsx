@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { ChevronLeft, Plus, Trash2, Save } from "lucide-react";
+import { ChevronLeft, Plus, Trash2, Save, Code2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/admin/exam/$examId")({
@@ -83,6 +83,25 @@ function EditExam() {
     qc.invalidateQueries({ queryKey: ["admin-exam", examId] });
   }
 
+  async function bulkImport(parsed: ParsedQ[], replace: boolean) {
+    if (replace) {
+      const { error: delErr } = await supabase.from("questions").delete().eq("exam_id", examId);
+      if (delErr) return toast.error(delErr.message);
+    }
+    const startPos = replace ? 0 : (data?.questions.length ?? 0);
+    const rows = parsed.map((p, i) => ({
+      exam_id: examId,
+      question_text: p.question_text,
+      options: p.options,
+      correct_index: p.correct_index,
+      position: startPos + i,
+    }));
+    const { error } = await supabase.from("questions").insert(rows);
+    if (error) return toast.error(error.message);
+    toast.success(`Imported ${rows.length} question${rows.length === 1 ? "" : "s"}`);
+    qc.invalidateQueries({ queryKey: ["admin-exam", examId] });
+  }
+
   async function deleteQuestion(id: string) {
     if (!confirm("Delete this question?")) return;
     const { error } = await supabase.from("questions").delete().eq("id", id);
@@ -124,6 +143,9 @@ function EditExam() {
           <Save className="h-4 w-4" /> Save details
         </button>
       </div>
+
+      {/* Bulk import */}
+      <BulkImport onImport={bulkImport} hasExisting={data.questions.length > 0} />
 
       {/* Questions */}
       <div className="mt-10 flex items-center justify-between">
