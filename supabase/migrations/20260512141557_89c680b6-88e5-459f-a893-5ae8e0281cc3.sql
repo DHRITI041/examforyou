@@ -1,4 +1,10 @@
 -- =====================================================
+-- REMOVE OLD ROLE FUNCTION
+-- =====================================================
+
+DROP FUNCTION IF EXISTS public.has_role(uuid, public.app_role);
+
+-- =====================================================
 -- EXAMS TABLE
 -- =====================================================
 
@@ -79,8 +85,26 @@ ON public.questions;
 DROP POLICY IF EXISTS "Public delete questions"
 ON public.questions;
 
+DROP POLICY IF EXISTS "Admins can insert exams"
+ON public.exams;
+
+DROP POLICY IF EXISTS "Admins can update exams"
+ON public.exams;
+
+DROP POLICY IF EXISTS "Admins can delete exams"
+ON public.exams;
+
+DROP POLICY IF EXISTS "Admins can insert questions"
+ON public.questions;
+
+DROP POLICY IF EXISTS "Admins can update questions"
+ON public.questions;
+
+DROP POLICY IF EXISTS "Admins can delete questions"
+ON public.questions;
+
 -- =====================================================
--- READ ACCESS FOR LOGGED-IN USERS
+-- READ ACCESS
 -- =====================================================
 
 CREATE POLICY "Authenticated users can read exams"
@@ -96,7 +120,7 @@ TO authenticated
 USING (true);
 
 -- =====================================================
--- ADMIN-ONLY EXAM CREATION
+-- ADMIN EXAM POLICIES
 -- =====================================================
 
 CREATE POLICY "Admin can insert exams"
@@ -135,7 +159,7 @@ USING (
 );
 
 -- =====================================================
--- ADMIN-ONLY QUESTION MANAGEMENT
+-- ADMIN QUESTION POLICIES
 -- =====================================================
 
 CREATE POLICY "Admin can insert questions"
