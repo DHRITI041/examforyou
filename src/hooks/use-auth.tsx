@@ -6,7 +6,10 @@ import {
   type ReactNode,
 } from "react";
 
-import type { Session, User } from "@supabase/supabase-js";
+import type {
+  Session,
+  User,
+} from "@supabase/supabase-js";
 
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
@@ -74,7 +77,7 @@ export function AuthProvider({
 
           if (s?.user) {
             setTimeout(() => {
-              loadUserData(s.user.id);
+              loadUserData();
             }, 0);
           } else {
             setProfile(null);
@@ -90,9 +93,7 @@ export function AuthProvider({
         setSession(data.session);
 
         if (data.session?.user) {
-          await loadUserData(
-            data.session.user.id
-          );
+          await loadUserData();
         }
 
         setIsLoading(false);
@@ -107,43 +108,26 @@ export function AuthProvider({
      LOAD USER DATA
   ========================= */
 
-  async function loadUserData(
-    userId: string
-  ) {
+  async function loadUserData() {
     try {
-      // Get profile
-      const profileResult =
-        await supabase
-          .from("profiles")
-          .select(
-            "display_name, avatar_url"
-          )
-          .eq("user_id", userId)
-          .maybeSingle();
-
-      setProfile(
-        profileResult.data ?? null
-      );
-
-      // Get logged-in user
       const {
         data: { user },
       } = await supabase.auth.getUser();
 
-      // Current email
       const email =
         user?.email
           ?.trim()
           .toLowerCase() ?? "";
 
-      // Admin check
       const admin =
         email ===
         ADMIN_EMAIL.toLowerCase();
 
       setIsAdmin(admin);
 
-      // Debug logs
+      // Disable profiles temporarily
+      setProfile(null);
+
       console.log(
         "Logged in email:",
         email
@@ -176,7 +160,7 @@ export function AuthProvider({
         "google",
         {
           redirect_uri:
-            "http://localhost:8081",
+            window.location.origin,
         }
       );
 
