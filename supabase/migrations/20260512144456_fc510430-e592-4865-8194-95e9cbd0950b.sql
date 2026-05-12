@@ -1,156 +1,150 @@
+-- =========================================================
+-- TESTKART COMPLETE ADMIN AUTH + EXAM SYSTEM FIX
+-- =========================================================
+-- This removes old role-based auth
+-- and replaces it with email-based admin access
+--
+-- ADMIN EMAIL:
+-- dhriti.haringhata@gmail.com
+-- =========================================================
 
--- ============ Roles ============
-create type public.app_role as enum ('admin', 'user');
+-- =========================================================
+-- REMOVE OLD POLICIES
+-- =========================================================
 
-create table public.profiles (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid not null unique references auth.users(id) on delete cascade,
-  display_name text,
-  avatar_url text,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+DROP POLICY IF EXISTS "Admins can insert exams" ON public.exams;
+DROP POLICY IF EXISTS "Admins can update exams" ON public.exams;
+DROP POLICY IF EXISTS "Admins can delete exams" ON public.exams;
+
+DROP POLICY IF EXISTS "Admins can insert questions" ON public.questions;
+DROP POLICY IF EXISTS "Admins can update questions" ON public.questions;
+DROP POLICY IF EXISTS "Admins can delete questions" ON public.questions;
+
+DROP POLICY IF EXISTS "Public write exams" ON public.exams;
+DROP POLICY IF EXISTS "Public update exams" ON public.exams;
+DROP POLICY IF EXISTS "Public delete exams" ON public.exams;
+
+DROP POLICY IF EXISTS "Public write questions" ON public.questions;
+DROP POLICY IF EXISTS "Public update questions" ON public.questions;
+DROP POLICY IF EXISTS "Public delete questions" ON public.questions;
+
+-- =========================================================
+-- KEEP PUBLIC READ ACCESS
+-- =========================================================
+
+DROP POLICY IF EXISTS "Authenticated can read exams" ON public.exams;
+
+CREATE POLICY "Authenticated can read exams"
+ON public.exams
+FOR SELECT
+TO authenticated
+USING (true);
+
+DROP POLICY IF EXISTS "Authenticated can read questions" ON public.questions;
+
+CREATE POLICY "Authenticated can read questions"
+ON public.questions
+FOR SELECT
+TO authenticated
+USING (true);
+
+-- =========================================================
+-- EMAIL-BASED ADMIN POLICIES FOR EXAMS
+-- =========================================================
+
+CREATE POLICY "Admin insert exams"
+ON public.exams
+FOR INSERT
+TO authenticated
+WITH CHECK (
+  lower(auth.jwt() ->> 'email')
+  =
+  'dhriti.haringhata@gmail.com'
 );
 
-alter table public.profiles enable row level security;
-
-create policy "Profiles viewable by authenticated"
-  on public.profiles for select
-  to authenticated
-  using (true);
-
-create policy "Users can update own profile"
-  on public.profiles for update
-  to authenticated
-  using (auth.uid() = user_id)
-  with check (auth.uid() = user_id);
-
-create policy "Users can insert own profile"
-  on public.profiles for insert
-  to authenticated
-  with check (auth.uid() = user_id);
-
-create table public.user_roles (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references auth.users(id) on delete cascade,
-  role public.app_role not null,
-  created_at timestamptz not null default now(),
-  unique (user_id, role)
+CREATE POLICY "Admin update exams"
+ON public.exams
+FOR UPDATE
+TO authenticated
+USING (
+  lower(auth.jwt() ->> 'email')
+  =
+  'dhriti.haringhata@gmail.com'
+)
+WITH CHECK (
+  lower(auth.jwt() ->> 'email')
+  =
+  'dhriti.haringhata@gmail.com'
 );
 
-alter table public.user_roles enable row level security;
+CREATE POLICY "Admin delete exams"
+ON public.exams
+FOR DELETE
+TO authenticated
+USING (
+  lower(auth.jwt() ->> 'email')
+  =
+  'dhriti.haringhata@gmail.com'
+);
 
-create or replace function public.has_role(_user_id uuid, _role public.app_role)
-returns boolean
-language sql
-stable
-security definer
-set search_path = public
-as $$
-  select exists (
-    select 1 from public.user_roles
-    where user_id = _user_id and role = _role
-  )
-$$;
+-- =========================================================
+-- EMAIL-BASED ADMIN POLICIES FOR QUESTIONS
+-- =========================================================
 
-create policy "Users can read own roles"
-  on public.user_roles for select
-  to authenticated
-  using (auth.uid() = user_id);
+CREATE POLICY "Admin insert questions"
+ON public.questions
+FOR INSERT
+TO authenticated
+WITH CHECK (
+  lower(auth.jwt() ->> 'email')
+  =
+  'dhriti.haringhata@gmail.com'
+);
 
-create policy "Admins can read all roles"
-  on public.user_roles for select
-  to authenticated
-  using (public.has_role(auth.uid(), 'admin'));
+CREATE POLICY "Admin update questions"
+ON public.questions
+FOR UPDATE
+TO authenticated
+USING (
+  lower(auth.jwt() ->> 'email')
+  =
+  'dhriti.haringhata@gmail.com'
+)
+WITH CHECK (
+  lower(auth.jwt() ->> 'email')
+  =
+  'dhriti.haringhata@gmail.com'
+);
 
-create policy "Admins can manage roles"
-  on public.user_roles for all
-  to authenticated
-  using (public.has_role(auth.uid(), 'admin'))
-  with check (public.has_role(auth.uid(), 'admin'));
+CREATE POLICY "Admin delete questions"
+ON public.questions
+FOR DELETE
+TO authenticated
+USING (
+  lower(auth.jwt() ->> 'email')
+  =
+  'dhriti.haringhata@gmail.com'
+);
 
--- ============ Auto-create profile + role on signup ============
-create or replace function public.handle_new_user()
-returns trigger
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-  is_first boolean;
-begin
-  insert into public.profiles (user_id, display_name, avatar_url)
-  values (
-    new.id,
-    coalesce(new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'name', new.email),
-    new.raw_user_meta_data->>'avatar_url'
-  )
-  on conflict (user_id) do nothing;
+-- =========================================================
+-- REMOVE OLD ROLE SYSTEM (OPTIONAL CLEANUP)
+-- =========================================================
 
-  -- Make the very first signed-up user the admin
-  select not exists (select 1 from public.user_roles) into is_first;
+DROP POLICY IF EXISTS "Users can read own roles"
+ON public.user_roles;
 
-  insert into public.user_roles (user_id, role)
-  values (new.id, case when is_first then 'admin'::public.app_role else 'user'::public.app_role end)
-  on conflict (user_id, role) do nothing;
+DROP POLICY IF EXISTS "Admins can read all roles"
+ON public.user_roles;
 
-  return new;
-end;
-$$;
+DROP POLICY IF EXISTS "Admins can manage roles"
+ON public.user_roles;
 
-create trigger on_auth_user_created
-after insert on auth.users
-for each row execute function public.handle_new_user();
+DROP FUNCTION IF EXISTS public.has_role(uuid, public.app_role);
 
--- updated_at trigger for profiles
-create or replace function public.touch_updated_at()
-returns trigger language plpgsql as $$
-begin new.updated_at = now(); return new; end; $$;
+DROP TABLE IF EXISTS public.user_roles;
 
-create trigger profiles_touch_updated_at
-before update on public.profiles
-for each row execute function public.touch_updated_at();
+DROP TYPE IF EXISTS public.app_role;
 
--- ============ Tighten exams + questions RLS ============
-drop policy if exists "Public read exams" on public.exams;
-drop policy if exists "Public write exams" on public.exams;
-drop policy if exists "Public update exams" on public.exams;
-drop policy if exists "Public delete exams" on public.exams;
-
-create policy "Authenticated can read exams"
-  on public.exams for select
-  to authenticated using (true);
-
-create policy "Admins can insert exams"
-  on public.exams for insert
-  to authenticated with check (public.has_role(auth.uid(), 'admin'));
-
-create policy "Admins can update exams"
-  on public.exams for update
-  to authenticated using (public.has_role(auth.uid(), 'admin'))
-  with check (public.has_role(auth.uid(), 'admin'));
-
-create policy "Admins can delete exams"
-  on public.exams for delete
-  to authenticated using (public.has_role(auth.uid(), 'admin'));
-
-drop policy if exists "Public read questions" on public.questions;
-drop policy if exists "Public write questions" on public.questions;
-drop policy if exists "Public update questions" on public.questions;
-drop policy if exists "Public delete questions" on public.questions;
-
-create policy "Authenticated can read questions"
-  on public.questions for select
-  to authenticated using (true);
-
-create policy "Admins can insert questions"
-  on public.questions for insert
-  to authenticated with check (public.has_role(auth.uid(), 'admin'));
-
-create policy "Admins can update questions"
-  on public.questions for update
-  to authenticated using (public.has_role(auth.uid(), 'admin'))
-  with check (public.has_role(auth.uid(), 'admin'));
-
-create policy "Admins can delete questions"
-  on public.questions for delete
-  to authenticated using (public.has_role(auth.uid(), 'admin'));
+-- =========================================================
+-- DONE
+-- =========================================================
