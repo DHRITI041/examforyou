@@ -1,8 +1,12 @@
 -- =====================================================
--- REMOVE OLD ROLE FUNCTION
+-- REMOVE OLD ROLE SYSTEM COMPLETELY
 -- =====================================================
 
-DROP FUNCTION IF EXISTS public.has_role(uuid, public.app_role);
+DROP FUNCTION IF EXISTS public.has_role(uuid, public.app_role) CASCADE;
+
+DROP TABLE IF EXISTS public.user_roles CASCADE;
+
+DROP TYPE IF EXISTS public.app_role CASCADE;
 
 -- =====================================================
 -- EXAMS TABLE
@@ -10,10 +14,15 @@ DROP FUNCTION IF EXISTS public.has_role(uuid, public.app_role);
 
 CREATE TABLE IF NOT EXISTS public.exams (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+
   title text NOT NULL,
+
   subject text NOT NULL DEFAULT 'General',
+
   description text,
+
   duration_minutes integer NOT NULL DEFAULT 60,
+
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
@@ -196,3 +205,7 @@ USING (
   =
   'dhriti.haringhata@gmail.com'
 );
+
+-- =====================================================
+-- DONE
+-- =====================================================
