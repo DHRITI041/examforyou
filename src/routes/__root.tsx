@@ -58,6 +58,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:description", content: "Free, open practice tests for JEE, NEET and more. Editable exams, removable timer, no signup." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
+      { name: "twitter:title", content: "TestKart — Free JEE & NEET Practice Exams" },
+      { name: "twitter:description", content: "Free, open practice tests for JEE, NEET and more. Editable exams, removable timer, no signup." },
+      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/igLKnHUCFIVywKDgzaJkH3lyHi32/social-images/social-1778595934991-Gemini_Generated_Image_z42ua2z42ua2z42u.webp" },
+      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/igLKnHUCFIVywKDgzaJkH3lyHi32/social-images/social-1778595934991-Gemini_Generated_Image_z42ua2z42ua2z42u.webp" },
     ],
     links: [
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
