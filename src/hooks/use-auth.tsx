@@ -15,7 +15,8 @@ import { lovable } from "@/integrations/lovable";
    ADMIN EMAIL
 ========================= */
 
-const ADMIN_EMAIL = "dhriti.haringhata@gmail.com";
+const ADMIN_EMAIL =
+  "dhriti.haringhata@gmail.com";
 
 /* =========================
    TYPES
@@ -40,7 +41,8 @@ type AuthCtx = {
    CONTEXT
 ========================= */
 
-const Ctx = createContext<AuthCtx | null>(null);
+const Ctx =
+  createContext<AuthCtx | null>(null);
 
 /* =========================
    PROVIDER
@@ -174,7 +176,7 @@ export function AuthProvider({
         "google",
         {
           redirect_uri:
-            window.location.origin,
+            "http://localhost:8081",
         }
       );
 
