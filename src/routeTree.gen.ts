@@ -13,6 +13,7 @@ import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as ExamExamIdRouteImport } from './routes/exam.$examId'
+import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as AdminExamExamIdRouteImport } from './routes/admin.exam.$examId'
 
 const AboutRoute = AboutRouteImport.update({
@@ -35,6 +36,11 @@ const ExamExamIdRoute = ExamExamIdRouteImport.update({
   path: '/exam/$examId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminUsersRoute = AdminUsersRouteImport.update({
+  id: '/admin/users',
+  path: '/admin/users',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminExamExamIdRoute = AdminExamExamIdRouteImport.update({
   id: '/admin/exam/$examId',
   path: '/admin/exam/$examId',
@@ -44,6 +50,7 @@ const AdminExamExamIdRoute = AdminExamExamIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/admin/users': typeof AdminUsersRoute
   '/exam/$examId': typeof ExamExamIdRoute
   '/admin/': typeof AdminIndexRoute
   '/admin/exam/$examId': typeof AdminExamExamIdRoute
@@ -51,6 +58,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/admin/users': typeof AdminUsersRoute
   '/exam/$examId': typeof ExamExamIdRoute
   '/admin': typeof AdminIndexRoute
   '/admin/exam/$examId': typeof AdminExamExamIdRoute
@@ -59,6 +67,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/admin/users': typeof AdminUsersRoute
   '/exam/$examId': typeof ExamExamIdRoute
   '/admin/': typeof AdminIndexRoute
   '/admin/exam/$examId': typeof AdminExamExamIdRoute
@@ -68,15 +77,23 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/about'
+    | '/admin/users'
     | '/exam/$examId'
     | '/admin/'
     | '/admin/exam/$examId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/about' | '/exam/$examId' | '/admin' | '/admin/exam/$examId'
+  to:
+    | '/'
+    | '/about'
+    | '/admin/users'
+    | '/exam/$examId'
+    | '/admin'
+    | '/admin/exam/$examId'
   id:
     | '__root__'
     | '/'
     | '/about'
+    | '/admin/users'
     | '/exam/$examId'
     | '/admin/'
     | '/admin/exam/$examId'
@@ -85,6 +102,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
+  AdminUsersRoute: typeof AdminUsersRoute
   ExamExamIdRoute: typeof ExamExamIdRoute
   AdminIndexRoute: typeof AdminIndexRoute
   AdminExamExamIdRoute: typeof AdminExamExamIdRoute
@@ -120,6 +138,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ExamExamIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/users': {
+      id: '/admin/users'
+      path: '/admin/users'
+      fullPath: '/admin/users'
+      preLoaderRoute: typeof AdminUsersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/exam/$examId': {
       id: '/admin/exam/$examId'
       path: '/admin/exam/$examId'
@@ -133,6 +158,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
+  AdminUsersRoute: AdminUsersRoute,
   ExamExamIdRoute: ExamExamIdRoute,
   AdminIndexRoute: AdminIndexRoute,
   AdminExamExamIdRoute: AdminExamExamIdRoute,
