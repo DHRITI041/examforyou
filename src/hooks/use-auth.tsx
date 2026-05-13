@@ -3,27 +3,14 @@ import {
   useContext,
   useEffect,
   useState,
+  useCallback,
   type ReactNode,
 } from "react";
 
-import type {
-  Session,
-  User,
-} from "@supabase/supabase-js";
+import type { Session, User } from "@supabase/supabase-js";
 
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
-
-/* =========================
-   ADMIN EMAIL
-========================= */
-
-const ADMIN_EMAIL =
-  "dhriti.haringhata@gmail.com";
-
-/* =========================
-   TYPES
-========================= */
 
 type Profile = {
   display_name: string | null;
@@ -38,148 +25,72 @@ type AuthCtx = {
   isLoading: boolean;
   signInGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
+  refreshRole: () => Promise<void>;
 };
 
-/* =========================
-   CONTEXT
-========================= */
+const Ctx = createContext<AuthCtx | null>(null);
 
-const Ctx =
-  createContext<AuthCtx | null>(null);
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [session, setSession] = useState<Session | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-/* =========================
-   PROVIDER
-========================= */
-
-export function AuthProvider({
-  children,
-}: {
-  children: ReactNode;
-}) {
-  const [session, setSession] =
-    useState<Session | null>(null);
-
-  const [profile, setProfile] =
-    useState<Profile | null>(null);
-
-  const [isAdmin, setIsAdmin] =
-    useState(false);
-
-  const [isLoading, setIsLoading] =
-    useState(true);
-
-  useEffect(() => {
-    // Listen for auth changes
-    const { data: sub } =
-      supabase.auth.onAuthStateChange(
-        (_event, s) => {
-          setSession(s);
-
-          if (s?.user) {
-            setTimeout(() => {
-              loadUserData();
-            }, 0);
-          } else {
-            setProfile(null);
-            setIsAdmin(false);
-          }
-        }
-      );
-
-    // Check existing session
-    supabase.auth
-      .getSession()
-      .then(async ({ data }) => {
-        setSession(data.session);
-
-        if (data.session?.user) {
-          await loadUserData();
-        }
-
-        setIsLoading(false);
-      });
-
-    return () => {
-      sub.subscription.unsubscribe();
-    };
+  const loadUserData = useCallback(async (uid: string) => {
+    const [{ data: prof }, { data: roles }] = await Promise.all([
+      supabase
+        .from("profiles" as any)
+        .select("display_name, avatar_url")
+        .eq("user_id", uid)
+        .maybeSingle(),
+      supabase
+        .from("user_roles" as any)
+        .select("role")
+        .eq("user_id", uid),
+    ]);
+    setProfile((prof as any) ?? null);
+    setIsAdmin(
+      Array.isArray(roles) &&
+        roles.some((r: any) => r.role === "admin"),
+    );
   }, []);
 
-  /* =========================
-     LOAD USER DATA
-  ========================= */
+  useEffect(() => {
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
+      setSession(s);
+      if (s?.user) {
+        setTimeout(() => loadUserData(s.user.id), 0);
+      } else {
+        setProfile(null);
+        setIsAdmin(false);
+      }
+    });
 
-  async function loadUserData() {
-    try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+    supabase.auth.getSession().then(async ({ data }) => {
+      setSession(data.session);
+      if (data.session?.user) {
+        await loadUserData(data.session.user.id);
+      }
+      setIsLoading(false);
+    });
 
-      const email =
-        user?.email
-          ?.trim()
-          .toLowerCase() ?? "";
-
-      const admin =
-        email ===
-        ADMIN_EMAIL.toLowerCase();
-
-      setIsAdmin(admin);
-
-      // Disable profiles temporarily
-      setProfile(null);
-
-      console.log(
-        "Logged in email:",
-        email
-      );
-
-      console.log(
-        "Admin email:",
-        ADMIN_EMAIL
-      );
-
-      console.log(
-        "Is Admin:",
-        admin
-      );
-    } catch (error) {
-      console.error(
-        "Failed to load user data:",
-        error
-      );
-    }
-  }
-
-  /* =========================
-     GOOGLE LOGIN
-  ========================= */
+    return () => sub.subscription.unsubscribe();
+  }, [loadUserData]);
 
   async function signInGoogle() {
-    const result =
-      await lovable.auth.signInWithOAuth(
-        "google",
-        {
-          redirect_uri:
-            window.location.origin,
-        }
-      );
-
-    if (result.error) {
-      throw result.error;
-    }
+    const result = await lovable.auth.signInWithOAuth("google", {
+      redirect_uri: window.location.origin,
+    });
+    if (result.error) throw result.error;
   }
-
-  /* =========================
-     LOGOUT
-  ========================= */
 
   async function signOut() {
     await supabase.auth.signOut();
   }
 
-  /* =========================
-     PROVIDER VALUE
-  ========================= */
+  async function refreshRole() {
+    if (session?.user) await loadUserData(session.user.id);
+  }
 
   return (
     <Ctx.Provider
@@ -191,6 +102,7 @@ export function AuthProvider({
         isLoading,
         signInGoogle,
         signOut,
+        refreshRole,
       }}
     >
       {children}
@@ -198,18 +110,8 @@ export function AuthProvider({
   );
 }
 
-/* =========================
-   HOOK
-========================= */
-
 export function useAuth() {
   const ctx = useContext(Ctx);
-
-  if (!ctx) {
-    throw new Error(
-      "useAuth must be used within AuthProvider"
-    );
-  }
-
+  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
   return ctx;
 }
