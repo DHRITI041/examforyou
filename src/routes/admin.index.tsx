@@ -78,9 +78,14 @@ function Admin() {
           <div className="text-xs uppercase tracking-widest text-muted-foreground">Admin</div>
           <h1 className="font-display text-4xl mt-1">Manage exams</h1>
         </div>
-        <button onClick={() => setOpen(true)} className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2.5 text-primary-foreground font-medium hover:opacity-90">
-          <Plus className="h-4 w-4" /> New exam
-        </button>
+        <div className="flex items-center gap-2">
+          <Link to="/admin/users" className="inline-flex items-center gap-2 rounded-md border border-border px-4 py-2.5 font-medium hover:bg-muted">
+            Manage admins
+          </Link>
+          <button onClick={() => setOpen(true)} className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2.5 text-primary-foreground font-medium hover:opacity-90">
+            <Plus className="h-4 w-4" /> New exam
+          </button>
+        </div>
       </div>
 
       {open && (
