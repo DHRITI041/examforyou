@@ -3,10 +3,8 @@ import { useAuth } from "@/hooks/use-auth";
 import { ShieldCheck, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
-const ADMIN_EMAIL = "dhriti.haringhata@gmail.com";
-
 export function AuthGate({ children }: { children: React.ReactNode }) {
-  const { user, isLoading, signInGoogle } = useAuth();
+  const { user, isLoading, isAdmin, signInGoogle } = useAuth();
   const [isSigningIn, setIsSigningIn] = useState(false);
 
   const handleSignIn = useCallback(async () => {
@@ -14,9 +12,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
       setIsSigningIn(true);
       await signInGoogle();
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Sign in failed";
-
+      const message = error instanceof Error ? error.message : "Sign in failed";
       toast.error(message);
     } finally {
       setIsSigningIn(false);
@@ -32,16 +28,8 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   }
 
   if (!user) {
-    return (
-      <LoginScreen
-        onSignIn={handleSignIn}
-        isSigningIn={isSigningIn}
-      />
-    );
+    return <LoginScreen onSignIn={handleSignIn} isSigningIn={isSigningIn} />;
   }
-
-  // ✅ Admin check
-  const isAdmin = user.email === ADMIN_EMAIL;
 
   return (
     <>
@@ -50,7 +38,6 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
           ADMIN
         </div>
       )}
-
       {children}
     </>
   );
